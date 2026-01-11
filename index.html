@@ -1,3 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌮 Taquería Fidelidad</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHa3f15EfV480LRmgovjqUtvmjwEDfbH0",
+            authDomain: "tacos-db64a.firebaseapp.com",
+            projectId: "tacos-db64a",
+            storageBucket: "tacos-db64a.firebasestorage.app",
+            messagingSenderId: "1025180284794",
+            appId: "1:1025180284794:web:19878ca1daeef2375a48c3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Fonctions Globales ---
+        window.checkClient = async function() {
+            const id = document.getElementById('phone').value.trim().toLowerCase();
+            if (!id) return;
+            window.currentClient = id;
+            
+            const docRef = doc(db, "clientes", id);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                await setDoc(docRef, { sellos: 0, nombre: id });
+            }
+            window.render(id);
+        }
+
+        window.addStamp = async function() {
+            if (!window.isAdmin) return;
+            const docRef = doc(db, "clientes", window.currentClient);
+            const docSnap = await getDoc(docRef);
+            if(docSnap.exists()){
+                let actuales = docSnap.data().sellos || 0;
+                let nouveauxSellos = (actuales >= 10) ? 0 : actuales + 1;
+                await setDoc(docRef, { sellos: nouveauxSellos }, { merge: true });
+            }
+        }
+
+        window.render = function(id) {
+            onSnapshot(doc(db, "clientes", id), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    document.getElementById('displayArea').style.display = "block";
+                    document.getElementById('clientName').innerText = id.toUpperCase();
+                    const grid = document.getElementById('stampGrid');
+                    grid.innerHTML = "";
+                    for (let i = 1; i <= 10; i++) {
+                        const div = document.createElement('div');
+                        div.className = `stamp ${i <= data.sellos ? 'active' : ''}`;
+                        div.innerText = i <= data.sellos ? '🌮' : i;
+                        grid.appendChild(div);
+                    }
+                    document.getElementById('counterText').innerText = `${data.sellos} / 10 sellos`;
+                    document.getElementById('rewardMsg').style.display = data.sellos >= 10 ? "block" : "none";
+                }
+            });
+        }
+
+        window.updateFullList = async function() {
+            const querySnapshot = await getDocs(collection(db, "clientes"));
+            const listDiv = document.getElementById('fullList');
+            listDiv.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const item = document.createElement('div');
+                item.className = 'client-item';
+                item.innerHTML = `<span><b>${doc.id.toUpperCase()}</b>: ${doc.data().sellos}</span> 
+                                 <button onclick="loadClient('${doc.id}')">Abrir</button>`;
+                listDiv.appendChild(item);
+            });
+        }
+
+        // AUTO-CHARGEMENT (Important pour le scan QR)
+        const urlParams = new URLSearchParams(window.location.search);
+        const userParam = urlParams.get('user');
+        if (userParam) {
+            window.currentClient = decodeURIComponent(userParam).toLowerCase();
+            window.render(window.currentClient);
+        }
+    </script>
+
+    <style>
+        :root { --primary: #e67e22; --secondary: #c0392b; --success: #27ae60; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: var(--secondary); text-align: center; margin-top: 0; }
+        .admin-only { display: none; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; }
+        button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; background: var(--primary); }
+        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; background: #fffcf9; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
+        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; }
+        .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; font-size: 20px; }
+        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin: 10px 0; font-size: 1.2rem; }
+        @keyframes pulse { 0% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        .client-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .lock-status { text-align: center; font-size: 0.8rem; color: #999; margin-top: 15px; cursor: pointer; }
+        h3#clientName { text-transform: uppercase; color: var(--primary); font-size: 1.5rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
 <div class="container">
     <div class="card">
         <h2>🌮 Taquería Fidelidad 🦈</h2>
@@ -15,10 +130,8 @@
             <div class="grid" id="stampGrid"></div>
             <p id="counterText"></p>
             <div id="rewardMsg" class="reward" style="display:none;">🎁 ¡TACO GRATIS! 🌮</div>
-            
             <button class="admin-only" style="background:var(--success); width:100%" onclick="addStamp()">+1 Sello</button>
-            
-            <button id="btnQR" style="background:var(--dark); width:100%; margin-top:10px" onclick="generateQR()">Generar mi código QR</button>
+            <button id="btnQR" style="background:var(--dark); width:100%; margin-top:10px" onclick="generateQR()">Generar QR Cliente</button>
             <div id="qrcode" style="display:flex; justify-content:center; margin-top:10px"></div>
         </div>
     </div>
@@ -31,15 +144,10 @@
 
 <script>
     window.isAdmin = false;
-
-    // Détection immédiate du mode client
     const urlParams = new URLSearchParams(window.location.search);
-    const isClientMode = urlParams.has('user');
-
-    if (isClientMode) {
-        // Si c'est un client, on cache toute la partie Admin (même le bouton de déverrouillage)
+    if (urlParams.has('user')) {
         document.getElementById('adminSection').style.display = 'none';
-        document.getElementById('btnQR').style.display = 'none'; // Le client n'a pas besoin de générer son propre QR
+        document.getElementById('btnQR').style.display = 'none';
     }
 
     window.unlockAdmin = function() {
@@ -66,3 +174,5 @@
         window.checkClient();
     }
 </script>
+</body>
+</html>
