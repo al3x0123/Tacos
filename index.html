@@ -3,158 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fidelidad Taquería de la mesera</title>
+    <title>🌮 Taquería Fidelidad</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Ta configuration Firebase intégrée
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHa3f15EfV480LRmgovjqUtvmjwEDfbH0",
+            authDomain: "tacos-db64a.firebaseapp.com",
+            projectId: "tacos-db64a",
+            storageBucket: "tacos-db64a.firebasestorage.app",
+            messagingSenderId: "1025180284794",
+            appId: "1:1025180284794:web:19878ca1daeef2375a48c3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Fonctions Globales ---
+        window.checkClient = async function() {
+            const id = document.getElementById('phone').value.trim().toLowerCase();
+            if (!id) return;
+            window.currentClient = id;
+            
+            const docRef = doc(db, "clientes", id);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                await setDoc(docRef, { sellos: 0, nombre: id });
+            }
+            render(id);
+        }
+
+        window.addStamp = async function() {
+            if (!window.isAdmin) return;
+            const docRef = doc(db, "clientes", window.currentClient);
+            const docSnap = await getDoc(docRef);
+            let actuales = docSnap.data().sellos || 0;
+            let nouveauxSellos = (actuales >= 10) ? 0 : actuales + 1;
+            await setDoc(docRef, { sellos: nouveauxSellos }, { merge: true });
+        }
+
+        window.render = function(id) {
+            onSnapshot(doc(db, "clientes", id), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    document.getElementById('displayArea').style.display = "block";
+                    document.getElementById('clientName').innerText = id.toUpperCase();
+                    const grid = document.getElementById('stampGrid');
+                    grid.innerHTML = "";
+                    for (let i = 1; i <= 10; i++) {
+                        const div = document.createElement('div');
+                        div.className = `stamp ${i <= data.sellos ? 'active' : ''}`;
+                        div.innerText = i <= data.sellos ? '🌮' : i;
+                        grid.appendChild(div);
+                    }
+                    document.getElementById('counterText').innerText = `${data.sellos} / 10 sellos`;
+                    document.getElementById('rewardMsg').style.display = data.sellos >= 10 ? "block" : "none";
+                }
+            });
+        }
+
+        window.updateFullList = async function() {
+            const querySnapshot = await getDocs(collection(db, "clientes"));
+            const listDiv = document.getElementById('fullList');
+            listDiv.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const item = document.createElement('div');
+                item.className = 'client-item';
+                item.innerHTML = `<span><b>${doc.id.toUpperCase()}</b>: ${doc.data().sellos}</span> 
+                                 <button onclick="loadClient('${doc.id}')">Abrir</button>`;
+                listDiv.appendChild(item);
+            });
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('user')) {
+            window.currentClient = decodeURIComponent(urlParams.get('user'));
+            window.render(window.currentClient);
+        }
+    </script>
+
     <style>
         :root { --primary: #e67e22; --secondary: #c0392b; --success: #27ae60; --dark: #2c3e50; }
         body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; margin: 0; padding: 15px; color: var(--dark); }
         .container { max-width: 500px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { color: var(--secondary); text-align: center; margin-top: 0; }
-        
+        .admin-only { display: none; }
         .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; }
-        button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; }
-        .btn-search { background: var(--primary); }
-        
-        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; display: none; background: #fffcf9; }
+        button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; background: var(--primary); }
+        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; background: #fffcf9; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
-        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; background: white; }
+        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; }
         .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; font-size: 20px; }
-        
-        .btn-add { background: var(--success); width: 100%; font-size: 1.1rem; margin-bottom: 10px; }
-        .btn-qr { background: var(--dark); width: 100%; }
-        
-        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin: 10px 0; display: none; font-size: 1.2rem; }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
-
-        /* Lista de clientes */
-        .client-list { margin-top: 20px; }
-        .client-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .client-item b { color: var(--primary); }
-
-        /* Estilo para el QR */
-        #qrcode { display: flex; justify-content: center; margin-top: 15px; padding: 10px; background: white; border-radius: 10px; }
+        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin: 10px 0; font-size: 1.2rem; }
+        @keyframes pulse { 0% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        .client-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .lock-status { text-align: center; font-size: 0.8rem; color: #999; margin-top: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>🌮 Taquería Fidelidad Mesera 🦈</h2>
+        <h2>🌮 Taquería Fidelidad</h2>
         
-        <div class="search-box">
+        <div class="search-box admin-only">
             <input type="text" id="phone" placeholder="Nombre o Teléfono">
-            <button class="btn-search" onclick="checkClient()">Buscar</button>
+            <button onclick="checkClient()">Buscar</button>
         </div>
 
-        <div id="displayArea" class="client-info">
-            <h3 id="clientName">Cliente</h3>
+        <div id="displayArea" style="display:none;" class="client-info">
+            <h3 id="clientName"></h3>
             <div class="grid" id="stampGrid"></div>
-            <p id="counterText">0 / 10 sellos</p>
-            <div id="rewardMsg" class="reward">🎁 ¡TACO GRATIS! 🌮</div>
-            <button class="btn-add" onclick="addStamp()">+1 Sello</button>
-            <button class="btn-qr" onclick="generateQR()">Generar QR Cliente</button>
-            <div id="qrcode"></div>
+            <p id="counterText"></p>
+            <div id="rewardMsg" class="reward" style="display:none;">🎁 ¡TACO GRATIS! 🌮</div>
+            <button class="admin-only" style="background:var(--success); width:100%" onclick="addStamp()">+1 Sello</button>
+            <button style="background:var(--dark); width:100%; margin-top:10px" onclick="generateQR()">Generar QR Cliente</button>
+            <div id="qrcode" style="display:flex; justify-content:center; margin-top:10px"></div>
         </div>
+        
+        <div class="lock-status" onclick="unlockAdmin()">🔓 Admin Mode</div>
     </div>
 
-    <div class="client-list">
-        <h3>Lista de Clientes</h3>
+    <div class="client-list admin-only">
+        <h3>Lista de Clientes (Cloud)</h3>
         <div id="fullList"></div>
     </div>
 </div>
 
 <script>
-    let currentClient = "";
-    let db = JSON.parse(localStorage.getItem('taqueriaDB')) || {};
-
-    // Iniciar lista al cargar
-    updateFullList();
-
-    function checkClient() {
-        currentClient = document.getElementById('phone').value.trim().toLowerCase();
-        if (!currentClient) return;
-        
-        if (!db[currentClient]) {
-            db[currentClient] = 0;
-            saveDB();
+    window.isAdmin = false;
+    window.unlockAdmin = function() {
+        const pin = prompt("PIN:");
+        if (pin === "1234") {
+            window.isAdmin = true;
+            document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'block');
+            window.updateFullList();
         }
-        document.getElementById('qrcode').innerHTML = ""; // Limpiar QR anterior
-        render();
     }
-
-    function render() {
-        document.getElementById('displayArea').style.display = "block";
-        document.getElementById('clientName').innerText = currentClient.toUpperCase();
-        
-        const grid = document.getElementById('stampGrid');
-        grid.innerHTML = "";
-        let count = db[currentClient];
-        
-        for (let i = 1; i <= 10; i++) {
-            const div = document.createElement('div');
-            div.className = `stamp ${i <= count ? 'active' : ''}`;
-            div.innerText = i <= count ? '🌮' : i;
-            grid.appendChild(div);
-        }
-
-        document.getElementById('counterText').innerText = `${count} / 10 sellos`;
-        document.getElementById('rewardMsg').style.display = count >= 10 ? "block" : "none";
-        updateFullList();
-    }
-
-    function addStamp() {
-        if (db[currentClient] >= 10) {
-            db[currentClient] = 0; 
-        } else {
-            db[currentClient]++;
-        }
-        saveDB();
-        render();
-    }
-
-    function generateQR() {
+    window.generateQR = function() {
         const qrDiv = document.getElementById('qrcode');
-        qrDiv.innerHTML = ""; // Limpiar
-        const url = window.location.href.split('?')[0] + "?user=" + encodeURIComponent(currentClient);
-        new QRCode(qrDiv, {
-            text: url,
-            width: 128,
-            height: 128
-        });
+        qrDiv.innerHTML = "";
+        const url = window.location.origin + window.location.pathname + "?user=" + encodeURIComponent(window.currentClient);
+        new QRCode(qrDiv, { text: url, width: 128, height: 128 });
     }
-
-    function updateFullList() {
-        const listDiv = document.getElementById('fullList');
-        listDiv.innerHTML = "";
-        
-        Object.keys(db).forEach(name => {
-            const item = document.createElement('div');
-            item.className = 'client-item';
-            item.innerHTML = `<span><b>${name.toUpperCase()}</b>: ${db[name]} sellos</span> 
-                             <button style="background:var(--primary); padding:5px 10px;" onclick="loadClient('${name}')">Abrir</button>`;
-            listDiv.appendChild(item);
-        });
-    }
-
-    function loadClient(name) {
+    window.loadClient = function(name) {
         document.getElementById('phone').value = name;
-        checkClient();
-    }
-
-    function saveDB() {
-        localStorage.setItem('taqueriaDB', JSON.stringify(db));
-    }
-
-    // Auto-cargar si viene de un QR
-    const urlParams = new URLSearchParams(window.location.search);
-    const userParam = urlParams.get('user');
-    if (userParam) {
-        document.getElementById('phone').value = userParam;
-        checkClient();
+        window.checkClient();
     }
 </script>
-
 </body>
 </html>
