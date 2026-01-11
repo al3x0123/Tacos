@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fidélité Snack</title>
+    <style>
+        :root { --primary: #e67e22; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; display: flex; justify-content: center; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
+        h2 { color: var(--primary); text-align: center; margin-bottom: 20px; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; }
+        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        
+        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; display: none; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
+        .stamp { width: 40px; height: 40px; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; content: '✅'; }
+        
+        .btn-add { background: var(--success); width: 100%; font-size: 1.2rem; margin-top: 10px; }
+        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin-top: 10px; display: none; }
+        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🍔 Fidélité Client</h2>
+    
+    <div class="search-box">
+        <input type="text" id="phone" placeholder="Nom ou N° de téléphone">
+        <button onclick="checkClient()">Chercher</button>
+    </div>
+
+    <div id="displayArea" class="client-info">
+        <h3 id="clientName">Client</h3>
+        <div class="grid" id="stampGrid"></div>
+        <p id="counterText">0 / 10 tampons</p>
+        <div id="rewardMsg" class="reward">🎁 CADEAU PRÊT !</div>
+        <button class="btn-add" onclick="addStamp()">+1 Tampon</button>
+    </div>
+</div>
+
+<script>
+    let currentClient = "";
+    let db = JSON.parse(localStorage.getItem('fideliteDB')) || {};
+
+    function checkClient() {
+        currentClient = document.getElementById('phone').value.trim().toLowerCase();
+        if (!currentClient) return;
+        
+        if (!db[currentClient]) db[currentClient] = 0;
+        render();
+    }
+
+    function render() {
+        document.getElementById('displayArea').style.display = "block";
+        document.getElementById('clientName').innerText = currentClient.toUpperCase();
+        
+        const grid = document.getElementById('stampGrid');
+        grid.innerHTML = "";
+        let count = db[currentClient];
+        
+        for (let i = 1; i <= 10; i++) {
+            const div = document.createElement('div');
+            div.className = `stamp ${i <= count ? 'active' : ''}`;
+            div.innerText = i <= count ? '✅' : i;
+            grid.appendChild(div);
+        }
+
+        document.getElementById('counterText').innerText = `${count} / 10 tampons`;
+        document.getElementById('rewardMsg').style.display = count >= 10 ? "block" : "none";
+    }
+
+    function addStamp() {
+        if (db[currentClient] >= 10) {
+            db[currentClient] = 0; // Réinitialise après avoir donné le cadeau
+        } else {
+            db[currentClient]++;
+        }
+        localStorage.setItem('fideliteDB', JSON.stringify(db));
+        render();
+    }
+</script>
+
+</body>
+</html>
