@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌮 Taquería Fidelidad</title>
+    <title>🍺 Beer Club - Fidelidad</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // Tu configuración Firebase (Se mantiene igual)
         const firebaseConfig = {
             apiKey: "AIzaSyCHa3f15EfV480LRmgovjqUtvmjwEDfbH0",
             authDomain: "tacos-db64a.firebaseapp.com",
@@ -22,7 +23,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- Fonctions Globales ---
+        // --- Lógica del Negocio ---
         window.checkClient = async function() {
             const id = document.getElementById('phone').value.trim().toLowerCase();
             if (!id) return;
@@ -43,7 +44,7 @@
             const docSnap = await getDoc(docRef);
             if(docSnap.exists()){
                 let actuales = docSnap.data().sellos || 0;
-                let nouveauxSellos = (actuales >= 10) ? 0 : actuales + 1;
+                let nuevosSellos = (actuales >= 10) ? 0 : actuales + 1;
                 await setDoc(docRef, { sellos: nouveauxSellos }, { merge: true });
             }
         }
@@ -59,10 +60,10 @@
                     for (let i = 1; i <= 10; i++) {
                         const div = document.createElement('div');
                         div.className = `stamp ${i <= data.sellos ? 'active' : ''}`;
-                        div.innerText = i <= data.sellos ? '🌮' : i;
+                        div.innerText = i <= data.sellos ? '🍺' : i;
                         grid.appendChild(div);
                     }
-                    document.getElementById('counterText').innerText = `${data.sellos} / 10 sellos`;
+                    document.getElementById('counterText').innerText = `${data.sellos} / 10 cervezas`;
                     document.getElementById('rewardMsg').style.display = data.sellos >= 10 ? "block" : "none";
                 }
             });
@@ -75,13 +76,12 @@
             querySnapshot.forEach((doc) => {
                 const item = document.createElement('div');
                 item.className = 'client-item';
-                item.innerHTML = `<span><b>${doc.id.toUpperCase()}</b>: ${doc.data().sellos}</span> 
-                                 <button onclick="loadClient('${doc.id}')">Abrir</button>`;
+                item.innerHTML = `<span><b>${doc.id.toUpperCase()}</b>: ${doc.data().sellos} 🍺</span> 
+                                 <button onclick="loadClient('${doc.id}')">Ver</button>`;
                 listDiv.appendChild(item);
             });
         }
 
-        // AUTO-CHARGEMENT (Important pour le scan QR)
         const urlParams = new URLSearchParams(window.location.search);
         const userParam = urlParams.get('user');
         if (userParam) {
@@ -91,53 +91,53 @@
     </script>
 
     <style>
-        :root { --primary: #e67e22; --secondary: #c0392b; --success: #27ae60; --dark: #2c3e50; }
-        body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; margin: 0; padding: 15px; color: var(--dark); }
+        :root { --primary: #f39c12; --secondary: #d35400; --success: #27ae60; --dark: #1a1a1a; }
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; margin: 0; padding: 15px; color: #ecf0f1; }
         .container { max-width: 500px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { color: var(--secondary); text-align: center; margin-top: 0; }
+        .card { background: #34495e; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #455a64; margin-bottom: 20px; }
+        h2 { color: var(--primary); text-align: center; margin-top: 0; text-transform: uppercase; letter-spacing: 2px; }
         .admin-only { display: none; }
         .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; }
+        input { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; background: #2c3e50; color: white; border: 1px solid #5d6d7e; }
         button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; background: var(--primary); }
-        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; background: #fffcf9; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
-        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; }
-        .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; font-size: 20px; }
-        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin: 10px 0; font-size: 1.2rem; }
-        @keyframes pulse { 0% {transform: scale(1.05);} 100% {transform: scale(1);} }
-        .client-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .lock-status { text-align: center; font-size: 0.8rem; color: #999; margin-top: 15px; cursor: pointer; }
-        h3#clientName { text-transform: uppercase; color: var(--primary); font-size: 1.5rem; margin-bottom: 10px; }
+        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; background: rgba(0,0,0,0.2); }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
+        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #5d6d7e; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); }
+        .stamp.active { border-style: solid; border-color: var(--primary); background: rgba(243, 156, 18, 0.2); font-size: 24px; filter: drop-shadow(0 0 5px var(--primary)); }
+        .reward { color: var(--primary); font-weight: bold; animation: pulse 1.2s infinite; margin: 15px 0; font-size: 1.3rem; border: 2px solid var(--primary); padding: 10px; border-radius: 10px; }
+        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05); background: rgba(243, 156, 18, 0.1);} 100% {transform: scale(1);} }
+        .client-item { display: flex; justify-content: space-between; align-items: center; background: #34495e; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); }
+        .lock-status { text-align: center; font-size: 0.8rem; color: #bdc3c7; margin-top: 20px; cursor: pointer; text-decoration: underline; }
+        h3#clientName { text-transform: uppercase; color: var(--primary); font-size: 1.6rem; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>🌮 Taquería Fidelidad 🦈</h2>
+        <h2>🍻 BEER CLUB 🍻</h2>
         
         <div id="adminSection">
             <div class="search-box admin-only">
                 <input type="text" id="phone" placeholder="Nombre o Teléfono">
                 <button onclick="checkClient()">Buscar</button>
             </div>
-            <div class="lock-status" onclick="unlockAdmin()" id="adminLock">🔓 Admin Mode</div>
+            <div class="lock-status" onclick="unlockAdmin()" id="adminLock">🔓 Acceso Staff</div>
         </div>
 
         <div id="displayArea" style="display:none;" class="client-info">
             <h3 id="clientName"></h3>
             <div class="grid" id="stampGrid"></div>
-            <p id="counterText"></p>
-            <div id="rewardMsg" class="reward" style="display:none;">🎁 ¡TACO GRATIS! 🌮</div>
-            <button class="admin-only" style="background:var(--success); width:100%" onclick="addStamp()">+1 Sello</button>
-            <button id="btnQR" style="background:var(--dark); width:100%; margin-top:10px" onclick="generateQR()">Generar QR Cliente</button>
-            <div id="qrcode" style="display:flex; justify-content:center; margin-top:10px"></div>
+            <p id="counterText" style="font-size: 1.1rem;"></p>
+            <div id="rewardMsg" class="reward" style="display:none;">🎉 ¡CERVEZA GRATIS! 🍺</div>
+            <button class="admin-only" style="background:var(--success); width:100%; font-size:1.2rem;" onclick="addStamp()">+1 CERVEZA 🍺</button>
+            <button id="btnQR" style="background:var(--dark); width:100%; margin-top:10px; border: 1px solid var(--primary);" onclick="generateQR()">Generar QR Cliente</button>
+            <div id="qrcode" style="display:flex; justify-content:center; margin-top:15px; background: white; padding: 10px; border-radius: 10px;"></div>
         </div>
     </div>
 
     <div class="client-list admin-only">
-        <h3>Lista de Clientes (Cloud)</h3>
+        <h3 style="color: var(--primary);">📋 Panel de Control</h3>
         <div id="fullList"></div>
     </div>
 </div>
@@ -151,11 +151,11 @@
     }
 
     window.unlockAdmin = function() {
-        const pin = prompt("PIN:");
+        const pin = prompt("PIN de Staff:");
         if (pin === "1234") {
             window.isAdmin = true;
             document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'block');
-            document.getElementById('adminLock').innerHTML = "✅ Modo Administrador Activo";
+            document.getElementById('adminLock').innerHTML = "✅ Modo Staff Activo";
             window.updateFullList();
         } else {
             alert("PIN Incorrecto");
@@ -166,7 +166,7 @@
         const qrDiv = document.getElementById('qrcode');
         qrDiv.innerHTML = "";
         const url = window.location.origin + window.location.pathname + "?user=" + encodeURIComponent(window.currentClient);
-        new QRCode(qrDiv, { text: url, width: 128, height: 128 });
+        new QRCode(qrDiv, { text: url, width: 128, height: 128, colorDark : "#000000", colorLight : "#ffffff" });
     }
 
     window.loadClient = function(name) {
