@@ -1,56 +1,86 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fidélité Snack</title>
+    <title>Fidelidad Taquería</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #e67e22; --success: #27ae60; }
-        body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; display: flex; justify-content: center; padding: 15px; }
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
-        h2 { color: var(--primary); text-align: center; margin-bottom: 20px; }
+        :root { --primary: #e67e22; --secondary: #c0392b; --success: #27ae60; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #fdf2e9; margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: var(--secondary); text-align: center; margin-top: 0; }
+        
         .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; }
-        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-search { background: var(--primary); }
         
-        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; display: none; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
-        .stamp { width: 40px; height: 40px; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-        .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; content: '✅'; }
+        .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; display: none; background: #fffcf9; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
+        .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #ccc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; background: white; }
+        .stamp.active { border-style: solid; border-color: var(--success); background: #eafaf1; font-size: 20px; }
         
-        .btn-add { background: var(--success); width: 100%; font-size: 1.2rem; margin-top: 10px; }
-        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin-top: 10px; display: none; }
+        .btn-add { background: var(--success); width: 100%; font-size: 1.1rem; margin-bottom: 10px; }
+        .btn-qr { background: var(--dark); width: 100%; }
+        
+        .reward { color: var(--success); font-weight: bold; animation: pulse 1s infinite; margin: 10px 0; display: none; font-size: 1.2rem; }
         @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+
+        /* Lista de clientes */
+        .client-list { margin-top: 20px; }
+        .client-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .client-item b { color: var(--primary); }
+
+        /* Estilo para el QR */
+        #qrcode { display: flex; justify-content: center; margin-top: 15px; padding: 10px; background: white; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>🍔 Fidélité Client</h2>
-    
-    <div class="search-box">
-        <input type="text" id="phone" placeholder="Nom ou N° de téléphone">
-        <button onclick="checkClient()">Chercher</button>
+<div class="container">
+    <div class="card">
+        <h2>🌮 Taquería Fidelidad</h2>
+        
+        <div class="search-box">
+            <input type="text" id="phone" placeholder="Nombre o Teléfono">
+            <button class="btn-search" onclick="checkClient()">Buscar</button>
+        </div>
+
+        <div id="displayArea" class="client-info">
+            <h3 id="clientName">Cliente</h3>
+            <div class="grid" id="stampGrid"></div>
+            <p id="counterText">0 / 10 sellos</p>
+            <div id="rewardMsg" class="reward">🎁 ¡TACO GRATIS! 🌮</div>
+            <button class="btn-add" onclick="addStamp()">+1 Sello</button>
+            <button class="btn-qr" onclick="generateQR()">Generar QR Cliente</button>
+            <div id="qrcode"></div>
+        </div>
     </div>
 
-    <div id="displayArea" class="client-info">
-        <h3 id="clientName">Client</h3>
-        <div class="grid" id="stampGrid"></div>
-        <p id="counterText">0 / 10 tampons</p>
-        <div id="rewardMsg" class="reward">🎁 CADEAU PRÊT !</div>
-        <button class="btn-add" onclick="addStamp()">+1 Tampon</button>
+    <div class="client-list">
+        <h3>Lista de Clientes</h3>
+        <div id="fullList"></div>
     </div>
 </div>
 
 <script>
     let currentClient = "";
-    let db = JSON.parse(localStorage.getItem('fideliteDB')) || {};
+    let db = JSON.parse(localStorage.getItem('taqueriaDB')) || {};
+
+    // Iniciar lista al cargar
+    updateFullList();
 
     function checkClient() {
         currentClient = document.getElementById('phone').value.trim().toLowerCase();
         if (!currentClient) return;
         
-        if (!db[currentClient]) db[currentClient] = 0;
+        if (!db[currentClient]) {
+            db[currentClient] = 0;
+            saveDB();
+        }
+        document.getElementById('qrcode').innerHTML = ""; // Limpiar QR anterior
         render();
     }
 
@@ -65,22 +95,64 @@
         for (let i = 1; i <= 10; i++) {
             const div = document.createElement('div');
             div.className = `stamp ${i <= count ? 'active' : ''}`;
-            div.innerText = i <= count ? '✅' : i;
+            div.innerText = i <= count ? '🌮' : i;
             grid.appendChild(div);
         }
 
-        document.getElementById('counterText').innerText = `${count} / 10 tampons`;
+        document.getElementById('counterText').innerText = `${count} / 10 sellos`;
         document.getElementById('rewardMsg').style.display = count >= 10 ? "block" : "none";
+        updateFullList();
     }
 
     function addStamp() {
         if (db[currentClient] >= 10) {
-            db[currentClient] = 0; // Réinitialise après avoir donné le cadeau
+            db[currentClient] = 0; 
         } else {
             db[currentClient]++;
         }
-        localStorage.setItem('fideliteDB', JSON.stringify(db));
+        saveDB();
         render();
+    }
+
+    function generateQR() {
+        const qrDiv = document.getElementById('qrcode');
+        qrDiv.innerHTML = ""; // Limpiar
+        const url = window.location.href.split('?')[0] + "?user=" + encodeURIComponent(currentClient);
+        new QRCode(qrDiv, {
+            text: url,
+            width: 128,
+            height: 128
+        });
+    }
+
+    function updateFullList() {
+        const listDiv = document.getElementById('fullList');
+        listDiv.innerHTML = "";
+        
+        Object.keys(db).forEach(name => {
+            const item = document.createElement('div');
+            item.className = 'client-item';
+            item.innerHTML = `<span><b>${name.toUpperCase()}</b>: ${db[name]} sellos</span> 
+                             <button style="background:var(--primary); padding:5px 10px;" onclick="loadClient('${name}')">Abrir</button>`;
+            listDiv.appendChild(item);
+        });
+    }
+
+    function loadClient(name) {
+        document.getElementById('phone').value = name;
+        checkClient();
+    }
+
+    function saveDB() {
+        localStorage.setItem('taqueriaDB', JSON.stringify(db));
+    }
+
+    // Auto-cargar si viene de un QR
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('user');
+    if (userParam) {
+        document.getElementById('phone').value = userParam;
+        checkClient();
     }
 </script>
 
