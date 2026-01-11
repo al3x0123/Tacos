@@ -43,7 +43,6 @@
             
             if(docSnap.exists()){
                 let compteActuel = docSnap.data().sellos || 0;
-                // Si 10 ou +, on repart à 1 pour la nouvelle carte
                 let nouveauxSellos = (compteActuel >= 10) ? 1 : compteActuel + 1;
                 await setDoc(docRef, { sellos: nouveauxSellos }, { merge: true });
             }
@@ -101,6 +100,13 @@
             window.currentClient = decodeURIComponent(userParam).toLowerCase();
             window.render(window.currentClient);
         }
+
+        // Vérification automatique au chargement
+        window.onload = function() {
+            if (localStorage.getItem('isStaff') === 'true') {
+                activateStaffMode();
+            }
+        }
     </script>
 
     <style>
@@ -109,28 +115,21 @@
         .container { max-width: 500px; margin: auto; }
         .card { background: #34495e; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #455a64; margin-bottom: 20px; }
         h2 { color: var(--primary); text-align: center; margin-top: 0; text-transform: uppercase; letter-spacing: 2px; }
-        
         .admin-only { display: none; }
-        
         .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; background: #2c3e50; color: white; border: 1px solid #5d6d7e; }
         button { padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; background: var(--primary); }
-        
         .client-info { border: 2px solid var(--primary); border-radius: 15px; padding: 15px; text-align: center; background: rgba(0,0,0,0.2); }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
         .stamp { width: 100%; aspect-ratio: 1; border: 2px dashed #5d6d7e; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); color: #5d6d7e; }
         .stamp.active { border-style: solid; border-color: var(--primary); background: rgba(243, 156, 18, 0.2); font-size: 24px; filter: drop-shadow(0 0 5px var(--primary)); }
-        
         .reward { color: var(--primary); font-weight: bold; animation: pulse 1.2s infinite; margin: 15px 0; font-size: 1.3rem; border: 2px solid var(--primary); padding: 10px; border-radius: 10px; }
         @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05); background: rgba(243, 156, 18, 0.1);} 100% {transform: scale(1);} }
-        
         .admin-controls { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
         .btn-add { background: var(--success); font-size: 1.4rem; padding: 15px; }
         .btn-remove { background: var(--error); font-size: 0.9rem; opacity: 0.8; }
-
         .client-item { display: flex; justify-content: space-between; align-items: center; background: #34495e; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); }
         .lock-status { text-align: center; font-size: 0.8rem; color: #bdc3c7; margin-top: 20px; cursor: pointer; text-decoration: underline; }
-        h3#clientName { text-transform: uppercase; color: var(--primary); font-size: 1.6rem; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -144,14 +143,13 @@
                 <input type="text" id="phone" placeholder="Nombre o Teléfono">
                 <button onclick="checkClient()">Buscar</button>
             </div>
-            <div class="lock-status" onclick="unlockAdmin()" id="adminLock">🔓 Acceso Staff</div>
+            <div class="lock-status" onclick="handleAdminClick()" id="adminLock">🔓 Acceso Staff</div>
         </div>
 
         <div id="displayArea" style="display:none;" class="client-info">
             <h3 id="clientName"></h3>
             <div class="grid" id="stampGrid"></div>
             <p id="counterText" style="font-size: 1.1rem;"></p>
-            
             <div id="rewardMsg" class="reward" style="display:none;">🎉 ¡CERVEZA GRATIS! 🍺</div>
             
             <div class="admin-controls">
@@ -172,22 +170,38 @@
 
 <script>
     window.isAdmin = false;
+
+    // Masquer les éléments si on est en mode client
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('user')) {
         document.getElementById('adminSection').style.display = 'none';
         document.getElementById('btnQR').style.display = 'none';
     }
 
-    window.unlockAdmin = function() {
-        const pin = prompt("PIN de Staff:");
-        if (pin === "1234") {
-            window.isAdmin = true;
-            document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'block');
-            document.getElementById('adminLock').innerHTML = "✅ Modo Staff Activo";
-            window.updateFullList();
+    // Gérer le clic sur le verrou
+    window.handleAdminClick = function() {
+        if (window.isAdmin) {
+            // Optionnel : déconnexion si déjà admin
+            if(confirm("¿Cerrar sesión de Staff?")) {
+                localStorage.removeItem('isStaff');
+                location.reload();
+            }
         } else {
-            alert("PIN Incorrecto");
+            const pin = prompt("PIN de Staff:");
+            if (pin === "1234") {
+                activateStaffMode();
+                localStorage.setItem('isStaff', 'true'); // On mémorise !
+            } else {
+                alert("PIN Incorrecto");
+            }
         }
+    }
+
+    function activateStaffMode() {
+        window.isAdmin = true;
+        document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'block');
+        document.getElementById('adminLock').innerHTML = "✅ Modo Staff Activo (Tap para salir)";
+        window.updateFullList();
     }
 
     window.generateQR = function() {
@@ -200,6 +214,13 @@
     window.loadClient = function(name) {
         document.getElementById('phone').value = name;
         window.checkClient();
+    }
+
+    // Vérification au chargement
+    window.onload = function() {
+        if (localStorage.getItem('isStaff') === 'true' && !urlParams.has('user')) {
+            activateStaffMode();
+        }
     }
 </script>
 </body>
