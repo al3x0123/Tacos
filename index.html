@@ -8,7 +8,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCHa3f15EfV480LRmgovjqUtvmjwEDfbH0",
@@ -40,7 +40,6 @@
             if (!window.isAdmin || !window.currentClient) return;
             const docRef = doc(db, "clientes", window.currentClient);
             const docSnap = await getDoc(docRef);
-            
             if(docSnap.exists()){
                 let compteActuel = docSnap.data().sellos || 0;
                 let nouveauxSellos = (compteActuel >= 10) ? 1 : compteActuel + 1;
@@ -52,12 +51,23 @@
             if (!window.isAdmin || !window.currentClient) return;
             const docRef = doc(db, "clientes", window.currentClient);
             const docSnap = await getDoc(docRef);
-            
             if(docSnap.exists()){
                 let compteActuel = docSnap.data().sellos || 0;
                 if (compteActuel > 0) {
                     await setDoc(docRef, { sellos: compteActuel - 1 }, { merge: true });
                 }
+            }
+        }
+
+        // --- NOUVELLE FONCTION : SUPPRIMER CLIENT ---
+        window.deleteClient = async function() {
+            if (!window.isAdmin || !window.currentClient) return;
+            if (confirm(`¿Estás seguro de que quieres eliminar a ${window.currentClient.toUpperCase()}? Esta acción es definitiva.`)) {
+                await deleteDoc(doc(db, "clientes", window.currentClient));
+                document.getElementById('displayArea').style.display = "none";
+                document.getElementById('phone').value = "";
+                window.updateFullList();
+                alert("Cliente eliminado correctamente.");
             }
         }
 
@@ -101,9 +111,8 @@
             window.render(window.currentClient);
         }
 
-        // Vérification automatique au chargement
         window.onload = function() {
-            if (localStorage.getItem('isStaff') === 'true') {
+            if (localStorage.getItem('isStaff') === 'true' && !urlParams.has('user')) {
                 activateStaffMode();
             }
         }
@@ -128,8 +137,10 @@
         .admin-controls { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
         .btn-add { background: var(--success); font-size: 1.4rem; padding: 15px; }
         .btn-remove { background: var(--error); font-size: 0.9rem; opacity: 0.8; }
+        .btn-delete { background: transparent; color: var(--error); border: 1px solid var(--error); font-size: 0.8rem; margin-top: 20px; }
         .client-item { display: flex; justify-content: space-between; align-items: center; background: #34495e; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); }
         .lock-status { text-align: center; font-size: 0.8rem; color: #bdc3c7; margin-top: 20px; cursor: pointer; text-decoration: underline; }
+        h3#clientName { text-transform: uppercase; color: var(--primary); font-size: 1.6rem; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -159,6 +170,8 @@
 
             <button id="btnQR" style="background:var(--dark); width:100%; margin-top:10px; border: 1px solid var(--primary);" onclick="generateQR()">Generar QR Cliente</button>
             <div id="qrcode" style="display:flex; justify-content:center; margin-top:15px; background: white; padding: 10px; border-radius: 10px;"></div>
+            
+            <button class="admin-only btn-delete" style="width:100%" onclick="deleteClient()">🗑️ Eliminar Cliente de la base</button>
         </div>
     </div>
 
@@ -170,18 +183,14 @@
 
 <script>
     window.isAdmin = false;
-
-    // Masquer les éléments si on est en mode client
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('user')) {
         document.getElementById('adminSection').style.display = 'none';
         document.getElementById('btnQR').style.display = 'none';
     }
 
-    // Gérer le clic sur le verrou
     window.handleAdminClick = function() {
         if (window.isAdmin) {
-            // Optionnel : déconnexion si déjà admin
             if(confirm("¿Cerrar sesión de Staff?")) {
                 localStorage.removeItem('isStaff');
                 location.reload();
@@ -190,7 +199,7 @@
             const pin = prompt("PIN de Staff:");
             if (pin === "1234") {
                 activateStaffMode();
-                localStorage.setItem('isStaff', 'true'); // On mémorise !
+                localStorage.setItem('isStaff', 'true');
             } else {
                 alert("PIN Incorrecto");
             }
@@ -216,7 +225,6 @@
         window.checkClient();
     }
 
-    // Vérification au chargement
     window.onload = function() {
         if (localStorage.getItem('isStaff') === 'true' && !urlParams.has('user')) {
             activateStaffMode();
